@@ -1,12 +1,14 @@
 from asyncore import write
-from typing_extensions import Required
 from wsgiref.validate import validator
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth import authenticate
 
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 from rest_framework.validators import UniqueValidator
+
+from .models import Profile
 
 class RegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
@@ -43,3 +45,23 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.save()
         token = Token.objects.create(user=user)
         return user
+
+class LoginSerializer(serializers.Serializer):
+    username = serializers.CharField(required=True)
+    password = serializers.CharField(write_only=True,
+        required=True)
+
+    def validate(self, data):
+        user = authenticate(**data)
+        if user :
+            token = Token.objects.get(user=user)
+            return token
+        raise serializers.ValidationError(
+            {"error": "unable to login"}
+        )
+
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = ("nickname","position","subjects","image")
+
